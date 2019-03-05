@@ -32,11 +32,12 @@ def extract_log_mel_feats(set_type, path_to_csv, path_to_files, out_path, sr, ff
     feats = []
 
     if set_type == 'train':
-        meta = pd.read_csv(path_to_csv, skiprows=1, names=['fname', 'label', 'manually_verified'])
+        meta = pd.read_csv(path_to_csv, sep='\t', header=None)
+        meta.columns = ['file', 'unk1', 'unk2', 'duration', 'type']
 
-        file_names = list(meta['fname'])
+        file_names = list(meta['file'])
         n_files = len(file_names)
-        labels = list(meta['label'])
+        labels = list(meta['type'])
 
         uniq_labels = np.sort(np.unique(labels))
         label_to_id = {label: i for i, label in enumerate(uniq_labels)}
