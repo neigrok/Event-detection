@@ -4,9 +4,10 @@ import pickle
 import pandas as pd
 import numpy as np
 
-from librosa.feature import melspectrogram
-from librosa.core import load as load_wav
 from librosa import power_to_db
+from librosa.core import load as load_wav
+from librosa.effects import split
+from librosa.feature import melspectrogram
 
 
 def extract_log_mel_feats(set_type, path_to_csv, path_to_files, out_path, sr, fft_size, hop, n_mels):
@@ -46,13 +47,19 @@ def extract_log_mel_feats(set_type, path_to_csv, path_to_files, out_path, sr, ff
 
         for i, (file_name, label) in tqdm(enumerate(zip(file_names, labels))):
             wav_data, sr = load_wav(os.path.join(path_to_files, file_name), sr=sr)
-            mel_spec = melspectrogram(wav_data, n_fft=fft_size, hop_length=hop, n_mels=n_mels, fmax=sr // 2)
-            log_mel_spec = power_to_db(mel_spec, ref=np.max)
-            feats.append({
-                'fname': file_name,
-                'feature': log_mel_spec,
-                'label_id': label_to_id[label]
-            })
+            for part in split(wav_data, top_db=30):
+                start, end = part
+                # skip ultra short parts
+                if (end - start) < fft_size:
+                    continue
+                wav_part = wav_data[start:end]                
+                mel_spec = melspectrogram(wav_part, n_fft=fft_size, hop_length=hop, n_mels=n_mels, fmax=sr // 2)
+                log_mel_spec = power_to_db(mel_spec, ref=np.max)
+                feats.append({
+                    'fname': file_name,
+                    'feature': log_mel_spec,
+                    'label_id': label_to_id[label]
+                })
         pickle.dump(feats, open(out_path, 'wb'))    
         return label_to_id
     else:
